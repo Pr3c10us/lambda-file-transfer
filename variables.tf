@@ -17,11 +17,13 @@ variable "default_sftp_secret_value" {
 variable "source_s3_name" {
   description = "ARN of source S3 bucket"
   type        = string
+  default = "lambda-file-transfer-puff"
 }
 
 variable "target_sftp_endpoint" {
   description = "Endpoint of target SFTP server."
   type        = string
+  default = "value"
 }
 
 variable "file_handler_function" {
