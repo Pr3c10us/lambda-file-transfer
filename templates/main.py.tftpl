@@ -1,0 +1,53 @@
+import base64
+import boto3
+import paramiko
+import json
+from io import StringIO
+
+
+def handler(event, context):
+    secret_name = "${secret_name}"
+    s3_bucket_name = "${s3_bucket_name}"
+    region_name = "${region}"
+    # endpoint_url = "http://localhost:4566"
+    sftp_host,sftp_port = "${sftp_endpoint}".split(':')
+    sftp_user, sftp_key, sftp_pass = None, None, None
+
+    session = boto3.session.Session()
+
+    secrets_client = session.client(
+        service_name='secretsmanager',
+        region_name=region_name,
+        # endpoint_url=endpoint_url
+    )
+
+    get_secret_value_response = secrets_client.get_secret_value(
+        SecretId=secret_name
+    )
+
+    s3_bucket = session.resource(
+        's3',
+         region_name=region_name,
+         # endpoint_url=endpoint_url
+     ).Bucket(s3_bucket_name)
+
+    sftp_secrets = json.loads(get_secret_value_response['SecretString'])
+
+    transport = paramiko.Transport((sftp_host, int(sftp_port)))
+
+    sftp_key_rsa_key = base64.b64decode(sftp_secrets['key']).decode('ascii').rstrip()
+
+    sftp_user = sftp_secrets['user']
+    # TODO: key based login
+    # sftp_key = paramiko.RSAKey.from_private_key(StringIO(sftp_key_rsa_key))
+    sftp_pass = sftp_secrets['password']
+
+    # TODO: key based login
+    transport.connect(None, sftp_user, sftp_pass)
+    sftp_client = paramiko.SFTPClient.from_transport(transport)
+
+    file_handler(s3_bucket, sftp_client, event, context)
+
+    sftp_client.close()
+
+${file_handler}
